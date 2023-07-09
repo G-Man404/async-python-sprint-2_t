@@ -17,7 +17,7 @@ IP - In progress
 
 class Job:
 
-    def __init__(self, task, args, start_at=datetime.datetime.now(), max_working_time=-1, tries=0, dependencies=[]):
+    def __init__(self, task, args=[], start_at=datetime.datetime.now(), max_working_time=-1, tries=0, dependencies=[]):
         self.task: callable = task
         self.args: list = args
         self.start_at: datetime.datetime = start_at
@@ -40,5 +40,8 @@ class Job:
                 self.status = "P"
                 break
             yield
-        self.result.append(thread.get())
+        try:
+            self.result.append(thread.get())
+        except:
+            print("ERROR")
         self.status = "F"
