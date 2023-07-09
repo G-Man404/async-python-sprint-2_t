@@ -2,31 +2,43 @@ import datetime
 import time
 import os
 from multiprocessing import Process
-from threading import Thread
-import scheduler
+from concurrent.futures import ThreadPoolExecutor
+from multiprocessing.pool import ThreadPool
+
+"""
+STATUS CODE
+F - Finish
+FE - Finish Error
+Q - Queue
+P - Pause
+IP - In progress
+"""
 
 
 class Job:
 
-    def __init__(self, task, args, start_at=datetime.datetime.now(), max_working_time=-1, tries=0, dependencies=list):
+    def __init__(self, task, args, start_at=datetime.datetime.now(), max_working_time=-1, tries=0, dependencies=[]):
         self.task: callable = task
         self.args: list = args
         self.start_at: datetime.datetime = start_at
         self.max_working_time: int = max_working_time
         self.tries: int = tries
-        self.dependencies: list = dependencies
-        self.status: str = "Queue"
-        self.result: list = list
+        self.dependencies: list[Job] = dependencies
+        self.status: str = "Q"
+        self.result: list = []
+        self.iter = self.run()
 
     def run(self):
-        thread = Thread(target=self.task, args=self.args)
+        pool = ThreadPool(processes=1)
+        thread = pool.apply_async(self.task, self.args)
         start_time = datetime.datetime.now()
-        thread.start()
-        while thread.is_alive():
+        self.status = "IP"
+        while thread.ready():
             if self.max_working_time == -1 or\
                     datetime.datetime.now() < start_time + datetime.timedelta(seconds=self.max_working_time):
                 self.tries -= 1
+                self.status = "P"
                 break
             yield
-        self.result = thread
+        self.result.append(thread.get())
         self.status = "F"
